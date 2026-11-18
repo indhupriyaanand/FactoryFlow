@@ -35,6 +35,8 @@ INSTALLED_APPS = [
 
     # FactoryFlow Modular Apps
     'core.apps.CoreConfig',
+    'accounts.apps.AccountsConfig',
+    'masters.apps.MastersConfig',
 ]
 
 MIDDLEWARE = [
