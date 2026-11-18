@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}FactoryFlow - Smart Order-to-Audit ERP (Phase 2 Live){% endblock %}
+{% block title %}FactoryFlow - Smart Order-to-Audit ERP (Phase 3 Live){% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-2 pb-3 mb-4 border-bottom">
@@ -12,7 +12,7 @@
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 d-flex gap-2">
         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
-            <i class="bi bi-check-circle-fill me-1"></i> Phase 2 Completed & Verified
+            <i class="bi bi-check-circle-fill me-1"></i> Phase 3 Master Data Seeded & Verified
         </span>
         <a href="/admin/" class="btn btn-primary btn-sm px-3 py-2">
             <i class="bi bi-shield-lock-fill me-1"></i> Open Django Admin
@@ -20,14 +20,14 @@
     </div>
 </div>
 
-<!-- System & Master Metrics Cards -->
+<!-- Master Metrics Cards -->
 <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="card border-0 shadow-sm rounded-3 h-100">
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Active Users</span>
                 <h3 class="fw-bold mb-0 text-primary mt-2">{{ user_count }}</h3>
-                <small class="text-muted">5 Roles Seeded</small>
+                <small class="text-muted">5 Roles Ready</small>
             </div>
         </div>
     </div>
@@ -36,7 +36,7 @@
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Products</span>
                 <h3 class="fw-bold mb-0 text-success mt-2">{{ product_count }}</h3>
-                <small class="text-muted">Finished Goods</small>
+                <small class="text-muted">Murukku 200g (₹50)</small>
             </div>
         </div>
     </div>
@@ -45,7 +45,7 @@
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Raw Materials</span>
                 <h3 class="fw-bold mb-0 text-info mt-2">{{ material_count }}</h3>
-                <small class="text-muted">Ingredients & Pkg</small>
+                <small class="text-muted">Flour, Oil, Spices, Pkg</small>
             </div>
         </div>
     </div>
@@ -54,7 +54,7 @@
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Customers</span>
                 <h3 class="fw-bold mb-0 text-warning mt-2">{{ customer_count }}</h3>
-                <small class="text-muted">Retail & Distrib</small>
+                <small class="text-muted">Retailer A, Distrib B</small>
             </div>
         </div>
     </div>
@@ -63,187 +63,159 @@
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Suppliers</span>
                 <h3 class="fw-bold mb-0 text-secondary mt-2">{{ supplier_count }}</h3>
-                <small class="text-muted">Vendors</small>
+                <small class="text-muted">Raw Material Vendor</small>
             </div>
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="card border-0 shadow-sm rounded-3 h-100">
             <div class="card-body">
-                <span class="text-muted small text-uppercase fw-semibold">BOM Recipes</span>
+                <span class="text-muted small text-uppercase fw-semibold">BOM Recipe Items</span>
                 <h3 class="fw-bold mb-0 text-danger mt-2">{{ bom_count }}</h3>
-                <small class="text-muted">Batch Formulations</small>
+                <small class="text-muted">Batch: 200 Packets</small>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Phase 2: Role Management & Credentials Card -->
+<!-- Phase 3 Benchmark Master Data: Murukku 200g BOM Recipe Card -->
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0 fw-bold text-dark">
-            <i class="bi bi-people-fill text-primary me-2"></i>Phase 2: Five User Roles & Demo Credentials
-        </h5>
-        <span class="badge bg-primary">Role-Based Access Control (RBAC)</span>
+        <div>
+            <h5 class="card-title mb-0 fw-bold text-dark">
+                <i class="bi bi-box-seam-fill text-success me-2"></i>Benchmark Bill of Materials (BOM): {{ murukku_product.name|default:"Murukku 200g" }}
+            </h5>
+            <small class="text-muted">Standard Batch Formulation for <strong>200 Packets</strong> &bull; Selling Price: ₹{{ murukku_product.unit_price }} &bull; GST Rate: {{ murukku_product.gst_rate }}%</small>
+        </div>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+            <i class="bi bi-check2-all me-1"></i> Formulation Locked
+        </span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Role</th>
-                        <th>Demo Username</th>
-                        <th>Password</th>
-                        <th>Scope & Permissions</th>
+                        <th>Material Component</th>
+                        <th>Material Code</th>
+                        <th>UOM</th>
+                        <th>Standard Rate</th>
+                        <th>Batch Requirement (200 pkts)</th>
+                        <th>Per-Packet Requirement</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% for item in bom_items %}
                     <tr>
-                        <td><span class="badge bg-danger px-2 py-1">Admin</span></td>
-                        <td><code>admin</code></td>
-                        <td><code>admin123</code></td>
-                        <td>Full superuser authority: manage users, masters, system config, approvals.</td>
+                        <td class="fw-semibold text-dark">{{ item.raw_material.name }}</td>
+                        <td><code>{{ item.raw_material.code }}</code></td>
+                        <td><span class="badge bg-info-subtle text-info border border-info-subtle">{{ item.raw_material.get_unit_display }}</span></td>
+                        <td>₹{{ item.raw_material.standard_rate }} / {{ item.raw_material.unit }}</td>
+                        <td class="fw-bold text-primary">{{ item.quantity }} {{ item.unit }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                <strong>{{ item.quantity_per_packet|floatformat:4 }}</strong> {{ item.unit }} / pkt
+                            </span>
+                        </td>
                         <td><span class="badge bg-success-subtle text-success">Active</span></td>
                     </tr>
+                    {% empty %}
                     <tr>
-                        <td><span class="badge bg-primary px-2 py-1">Salesman</span></td>
-                        <td><code>salesman</code></td>
-                        <td><code>sales123</code></td>
-                        <td>View product catalog, add/view customers, create and track own sales orders.</td>
-                        <td><span class="badge bg-success-subtle text-success">Active</span></td>
+                        <td colspan="7" class="text-center py-3 text-muted">No BOM components found. Run <code>python manage.py seed_benchmark_data</code>.</td>
                     </tr>
-                    <tr>
-                        <td><span class="badge bg-warning text-dark px-2 py-1">Production Supervisor</span></td>
-                        <td><code>supervisor</code></td>
-                        <td><code>prod123</code></td>
-                        <td>Manage BOM recipes, track production batches, output & wastage logging.</td>
-                        <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                    </tr>
-                    <tr>
-                        <td><span class="badge bg-info text-dark px-2 py-1">Accountant / Auditor</span></td>
-                        <td><code>accountant</code></td>
-                        <td><code>audit123</code></td>
-                        <td>Strictly <strong>read-only</strong> access to financial registers, tax summaries, ledger, and audits.</td>
-                        <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                    </tr>
-                    <tr>
-                        <td><span class="badge bg-dark px-2 py-1">Owner</span></td>
-                        <td><code>owner</code></td>
-                        <td><code>owner123</code></td>
-                        <td>Executive business overview: profitability, inventory valuation, audit reports.</td>
-                        <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-    <div class="card-footer bg-light py-2 text-muted small">
-        <i class="bi bi-lightbulb-fill text-warning me-1"></i> You can test permissions by logging into <a href="/admin/" target="_blank">Django Admin</a> with any of the above credentials.
+    <div class="card-footer bg-light py-2 text-muted small d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-info-circle-fill text-primary me-1"></i> Per-packet requirement is computed dynamically: <code>Planned Qty / Batch Size (200)</code>.</span>
+        <span class="text-success fw-semibold"><i class="bi bi-shield-check me-1"></i>Zero Balance Overwrites: Stock ledger begins in Phase 4</span>
     </div>
 </div>
 
-<!-- Architecture & Phase Progress -->
+<!-- Master Entities Row: Customers, Suppliers & Raw Materials -->
 <div class="row g-4 mb-4">
-    <!-- Left Column: Master Models Overview -->
-    <div class="col-lg-7">
+    <!-- Customers Card -->
+    <div class="col-lg-6">
         <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white border-bottom py-3">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-diagram-3 text-success me-2"></i>Phase 2 Foundational Database Models
-                </h5>
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-building text-warning me-2"></i>Customer Directory (GST Destination Setup)
+                </h6>
+                <span class="badge bg-warning-subtle text-warning text-dark border border-warning-subtle">Intra vs Inter-State</span>
             </div>
-            <div class="card-body">
-                <ul class="list-group list-group-flush mb-3">
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <div class="fw-semibold">1. UserProfile (App: <code>accounts</code>)</div>
-                            <small class="text-muted">Extends Django auth User with 5 distinct roles and phone number.</small>
-                        </div>
-                        <span class="badge bg-primary-subtle text-primary">OneToOne to User</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <div class="fw-semibold">2. Product (App: <code>masters</code>)</div>
-                            <small class="text-muted">Finished goods (e.g. Murukku 200g), SKU code, packet size, GST rate (5%), unit price.</small>
-                        </div>
-                        <span class="badge bg-success-subtle text-success">No Overwritten Stock</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <div class="fw-semibold">3. RawMaterial (App: <code>masters</code>)</div>
-                            <small class="text-muted">Ingredients & packaging (Flour, Oil, Spices, Pouches, Cartons), standard procurement rate.</small>
-                        </div>
-                        <span class="badge bg-info-subtle text-info">UOM: kg, L, pcs</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <div class="fw-semibold">4. Customer & Supplier (App: <code>masters</code>)</div>
-                            <small class="text-muted">Includes State & GSTIN to calculate Intra-state (CGST+SGST) vs Inter-state (IGST).</small>
-                        </div>
-                        <span class="badge bg-warning-subtle text-warning text-dark">GSTIN Validated</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div>
-                            <div class="fw-semibold">5. BillOfMaterials - BOM (App: <code>masters</code>)</div>
-                            <small class="text-muted">Batch formulation recipe with unique constraint per Product + Material.</small>
-                        </div>
-                        <span class="badge bg-danger-subtle text-danger">Batch Size: 200 pkts</span>
-                    </li>
-                </ul>
-
-                <div class="alert alert-success d-flex align-items-center mb-0" role="alert">
-                    <i class="bi bi-shield-check fs-4 me-3"></i>
-                    <div>
-                        <strong>Zero Overwritten Balances:</strong>
-                        In accordance with enterprise ERP standards, <code>Product</code> and <code>RawMaterial</code> do not store manually editable stock balances. Stock will be calculated strictly through immutable ledger entries in Phase 4.
-                    </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Customer Name</th>
+                                <th>State & Code</th>
+                                <th>GSTIN</th>
+                                <th>GST Tax Category</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            {% for cust in customers %}
+                            <tr>
+                                <td class="fw-semibold">{{ cust.name }}</td>
+                                <td>
+                                    <span class="badge {% if cust.state == 'Tamil Nadu' %}bg-primary{% else %}bg-warning text-dark{% endif %}">
+                                        {{ cust.state }} ({{ cust.state_code }})
+                                    </span>
+                                </td>
+                                <td><code>{{ cust.gstin|default:"Unregistered" }}</code></td>
+                                <td>
+                                    {% if cust.state == 'Tamil Nadu' %}
+                                    <span class="badge bg-primary-subtle text-primary">CGST 2.5% + SGST 2.5%</span>
+                                    {% else %}
+                                    <span class="badge bg-warning-subtle text-warning text-dark">IGST 5.0%</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-2 text-muted">No customers found.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Right Column: Benchmark Target Reminder -->
-    <div class="col-lg-5">
+    <!-- Suppliers Card -->
+    <div class="col-lg-6">
         <div class="card border-0 shadow-sm rounded-3 h-100">
-            <div class="card-header bg-white border-bottom py-3">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-award text-warning me-2"></i>Mandatory Benchmark Target
-                </h5>
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-truck text-secondary me-2"></i>Supplier Directory (Procurement Setup)
+                </h6>
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Vendors</span>
             </div>
-            <div class="card-body">
-                <p class="small text-muted mb-3">
-                    FactoryFlow will model the entire operational workflow for <strong>South Indian Murukku 200g</strong> manufacturing:
-                </p>
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle mb-0">
+                    <table class="table table-sm table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Stage</th>
-                                <th>Benchmark Parameters</th>
+                                <th>Supplier Name</th>
+                                <th>Contact Number</th>
+                                <th>State</th>
+                                <th>GSTIN</th>
                             </tr>
                         </thead>
                         <tbody class="small">
+                            {% for supp in suppliers %}
                             <tr>
-                                <td class="fw-semibold">Product</td>
-                                <td>Murukku 200g (Batch: 200 pkts)</td>
+                                <td class="fw-semibold">{{ supp.name }}</td>
+                                <td>{{ supp.contact_number }}</td>
+                                <td><span class="badge bg-primary">{{ supp.state }} ({{ supp.state_code }})</span></td>
+                                <td><code>{{ supp.gstin|default:"Unregistered" }}</code></td>
                             </tr>
-                            <tr>
-                                <td class="fw-semibold">BOM Recipe</td>
-                                <td>Flour 40kg, Oil 10L, Spices 1.2kg, Pouches 200, Cartons 10</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-semibold">Production</td>
-                                <td>Good: 188 pkts (-6% yield), Damaged: 6 pkts, Oil: 10.5L (+5%)</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-semibold">Retailer A (TN)</td>
-                                <td>150 pkts &bull; CGST 2.5% + SGST 2.5% &bull; ₹7,875 Total</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-semibold">Distributor B (KA)</td>
-                                <td>120 pkts &bull; Shortage: 32 pkts &bull; IGST 5%</td>
-                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-2 text-muted">No suppliers found.</td></tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -281,19 +253,19 @@
                         <td class="fw-bold">Phase 2</td>
                         <td>Auth & Master Models</td>
                         <td>UserProfile, 5 Roles (Admin, Sales, Prod, Auditor, Owner), Product, Material, Customer, Supplier, BOM</td>
-                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed & Tested</span></td>
+                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed</span></td>
                     </tr>
-                    <tr>
+                    <tr class="table-success">
                         <td class="fw-bold">Phase 3</td>
-                        <td>Master Data & Recipe UI</td>
-                        <td>Murukku 200g Master catalog, Opening rates, Customer & Supplier directory, BOM views</td>
-                        <td><span class="badge bg-warning text-dark">Next Phase</span></td>
+                        <td>Master Data & Seed Data</td>
+                        <td>Murukku 200g, 5 Raw Materials, Retailer A, Distributor B, Supplier, BOM Recipe, Idempotent Seeder</td>
+                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed & Tested</span></td>
                     </tr>
                     <tr>
                         <td class="fw-bold">Phase 4</td>
                         <td>Purchases & Stock Ledger</td>
                         <td>Purchase Orders, Goods Receipt (GRN), Append-only Stock Ledger, Weighted Average Costing</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
+                        <td><span class="badge bg-warning text-dark">Next Phase</span></td>
                     </tr>
                     <tr>
                         <td class="fw-bold">Phase 5</td>

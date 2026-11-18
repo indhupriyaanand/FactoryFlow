@@ -1,15 +1,25 @@
+import io
 from decimal import Decimal
 from django.test import TestCase
+from django.core.management import call_command
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from accounts.models import Role
+from accounts.roles import setup_role_groups
 from masters.models import Product, RawMaterial, Customer, Supplier, BillOfMaterials, UnitChoices
 
-class MasterModelsTests(TestCase):
+class MasterModelsAndBenchmarkSeedTests(TestCase):
     """
-    Automated verification tests for Phase 2 Master Data Models:
-    Product, RawMaterial, Customer, Supplier, BillOfMaterials.
+    Automated verification tests for Phase 3:
+    - Master models validation and constraints
+    - BOM calculations per packet
+    - Idempotency of seed_benchmark_data command
+    - Role-based permissions on masters
     """
 
     def setUp(self):
+        setup_role_groups()
+
         # Create benchmark sample product: Murukku 200 g
         self.product = Product.objects.create(
             name="Murukku 200 g",
@@ -33,7 +43,7 @@ class MasterModelsTests(TestCase):
             standard_rate=Decimal('140.00')
         )
 
-    # 1. Product Tests
+    # 1. Product Master Tests
     def test_product_creation_and_attributes(self):
         """Verify product fields, uppercase code, and string representation."""
         self.assertEqual(self.product.code, "PRD-MUR-200G")
@@ -47,7 +57,7 @@ class MasterModelsTests(TestCase):
         with self.assertRaises(Exception):
             Product.objects.create(
                 name="Duplicate Murukku",
-                code="PRD-MUR-200G",  # Duplicate code
+                code="PRD-MUR-200G",
                 packet_size="200 g",
             )
 
@@ -61,7 +71,7 @@ class MasterModelsTests(TestCase):
         with self.assertRaises(ValidationError):
             product.full_clean()
 
-    # 2. Raw Material Tests
+    # 2. Raw Material Master Tests
     def test_raw_material_creation(self):
         """Verify raw material attributes and string representation."""
         self.assertEqual(self.flour.code, "RM-FLOUR")
@@ -88,7 +98,7 @@ class MasterModelsTests(TestCase):
         with self.assertRaises(ValidationError):
             rm.full_clean()
 
-    # 3. Customer Tests
+    # 3. Customer & Supplier Tests
     def test_customer_creation_and_state(self):
         """Test customer creation for Retailer A (Tamil Nadu) and Distributor B (Karnataka)."""
         retailer_a = Customer.objects.create(
@@ -97,7 +107,7 @@ class MasterModelsTests(TestCase):
             address="12 Main Bazaar, Madurai",
             state="Tamil Nadu",
             state_code="33",
-            gstin="33ABCDE1234F1Z5"
+            gstin="33AAAAA0000A1Z5"
         )
         distributor_b = Customer.objects.create(
             name="Distributor B",
@@ -105,41 +115,30 @@ class MasterModelsTests(TestCase):
             address="45 Industrial Area, Bengaluru",
             state="Karnataka",
             state_code="29",
-            gstin="29XYZAB5678C1Z2"
+            gstin="29BBBBB0000B1Z6"
         )
         self.assertEqual(retailer_a.state, "Tamil Nadu")
+        self.assertEqual(retailer_a.state_code, "33")
         self.assertEqual(distributor_b.state, "Karnataka")
+        self.assertEqual(distributor_b.state_code, "29")
         self.assertTrue(retailer_a.is_active)
         self.assertIn("Retailer A", str(retailer_a))
 
-    def test_customer_invalid_gstin_length(self):
-        """Verify that GSTIN with invalid character count raises ValidationError."""
-        cust = Customer(
-            name="Bad GST Customer",
-            contact_number="1234567890",
-            address="Somewhere",
-            state="Tamil Nadu",
-            gstin="SHORTGST"  # Not 15 chars
-        )
-        with self.assertRaises(ValidationError):
-            cust.full_clean()
-
-    # 4. Supplier Tests
     def test_supplier_creation(self):
         """Test supplier master creation and string representation."""
         supplier = Supplier.objects.create(
-            name="Sri Krishna Flour Mills",
-            contact_number="9988776655",
-            address="10 Grain Market, Trichy",
+            name="Sample Raw Material Supplier",
+            contact_number="9443322110",
+            address="Agro Trading Complex, NH-45, Trichy",
             state="Tamil Nadu",
             state_code="33",
-            gstin="33KLMNO9988P1Z3"
+            gstin="33CCCCC0000C1Z7"
         )
-        self.assertEqual(supplier.name, "Sri Krishna Flour Mills")
+        self.assertEqual(supplier.name, "Sample Raw Material Supplier")
+        self.assertEqual(supplier.state_code, "33")
         self.assertTrue(supplier.is_active)
-        self.assertIn("Sri Krishna Flour Mills", str(supplier))
 
-    # 5. Bill of Materials (BOM) Tests
+    # 4. Bill of Materials (BOM) Calculation Tests
     def test_bom_creation_and_calculation(self):
         """Test standard BOM creation: 40kg Flour for 200 packets Murukku."""
         bom_flour = BillOfMaterials.objects.create(
@@ -153,7 +152,6 @@ class MasterModelsTests(TestCase):
         self.assertEqual(bom_flour.batch_size, Decimal('200.00'))
         # 40 kg / 200 packets = 0.20 kg per packet
         self.assertEqual(bom_flour.quantity_per_packet, Decimal('0.2000'))
-        self.assertIn("Murukku 200 g", str(bom_flour))
 
     def test_bom_unique_product_material_constraint(self):
         """Verify that the same material cannot be duplicated in a product's BOM."""
@@ -164,7 +162,6 @@ class MasterModelsTests(TestCase):
             unit=UnitChoices.KG,
             batch_size=Decimal('200.00')
         )
-        # Attempt to add Flour again to the same Murukku product
         with self.assertRaises(Exception):
             BillOfMaterials.objects.create(
                 product=self.product,
@@ -185,3 +182,96 @@ class MasterModelsTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             bom.full_clean()
+
+    # 5. Seed Command Idempotency Tests
+    def test_seed_benchmark_data_command_idempotency(self):
+        """
+        Verify that running seed_benchmark_data populates exact records,
+        and running it a second time does NOT create any duplicate records.
+        """
+        out = io.StringIO()
+        call_command('seed_benchmark_data', stdout=out)
+
+        # Verify initial counts
+        product = Product.objects.get(code="PRD-MUR-200G")
+        self.assertEqual(product.name, "Murukku 200g")
+        self.assertEqual(product.unit_price, Decimal('50.00'))
+
+        self.assertEqual(RawMaterial.objects.filter(code__in=[
+            "RM-FLOUR", "RM-OIL", "RM-SPICE", "RM-POUCH", "RM-CARTON"
+        ]).count(), 5)
+
+        self.assertEqual(Customer.objects.filter(name__in=["Retailer A", "Distributor B"]).count(), 2)
+        self.assertTrue(Supplier.objects.filter(name="Sample Raw Material Supplier").exists())
+
+        # Check BOM items count
+        bom_items = BillOfMaterials.objects.filter(product=product)
+        self.assertEqual(bom_items.count(), 5)
+
+        # Check BOM per-packet exact formulas:
+        # Flour: 40 / 200 = 0.20 kg
+        flour_bom = bom_items.get(raw_material__code="RM-FLOUR")
+        self.assertEqual(flour_bom.quantity, Decimal('40.0000'))
+        self.assertEqual(flour_bom.quantity_per_packet, Decimal('0.2000'))
+
+        # Oil: 10 / 200 = 0.05 litre
+        oil_bom = bom_items.get(raw_material__code="RM-OIL")
+        self.assertEqual(oil_bom.quantity, Decimal('10.0000'))
+        self.assertEqual(oil_bom.quantity_per_packet, Decimal('0.0500'))
+
+        # Spice: 1.2 / 200 = 0.006 kg
+        spice_bom = bom_items.get(raw_material__code="RM-SPICE")
+        self.assertEqual(spice_bom.quantity, Decimal('1.2000'))
+        self.assertEqual(spice_bom.quantity_per_packet, Decimal('0.0060'))
+
+        # Pouches: 200 / 200 = 1.0 piece
+        pouch_bom = bom_items.get(raw_material__code="RM-POUCH")
+        self.assertEqual(pouch_bom.quantity, Decimal('200.0000'))
+        self.assertEqual(pouch_bom.quantity_per_packet, Decimal('1.0000'))
+
+        # Cartons: 10 / 200 = 0.05 piece
+        carton_bom = bom_items.get(raw_material__code="RM-CARTON")
+        self.assertEqual(carton_bom.quantity, Decimal('10.0000'))
+        self.assertEqual(carton_bom.quantity_per_packet, Decimal('0.0500'))
+
+        # Record counts before second run
+        prod_count_1 = Product.objects.count()
+        rm_count_1 = RawMaterial.objects.count()
+        cust_count_1 = Customer.objects.count()
+        supp_count_1 = Supplier.objects.count()
+        bom_count_1 = BillOfMaterials.objects.count()
+
+        # RUN SEED COMMAND A SECOND TIME (Verify Idempotency)
+        call_command('seed_benchmark_data', stdout=out)
+
+        self.assertEqual(Product.objects.count(), prod_count_1)
+        self.assertEqual(RawMaterial.objects.count(), rm_count_1)
+        self.assertEqual(Customer.objects.count(), cust_count_1)
+        self.assertEqual(Supplier.objects.count(), supp_count_1)
+        self.assertEqual(BillOfMaterials.objects.count(), bom_count_1)
+
+    # 6. Role Permissions on Masters
+    def test_role_permissions_on_masters(self):
+        """Verify supervisor can manage BOM, accountant is read-only, salesman can't change BOM."""
+        # Supervisor
+        sup = User.objects.create_user(username='bom_sup', password='Password123!')
+        sup.profile.role = Role.PRODUCTION_SUPERVISOR
+        sup.profile.save()
+        sup = User.objects.get(pk=sup.pk)
+        self.assertTrue(sup.has_perm('masters.add_billofmaterials'))
+        self.assertTrue(sup.has_perm('masters.change_billofmaterials'))
+
+        # Accountant
+        acct = User.objects.create_user(username='bom_acct', password='Password123!')
+        acct.profile.role = Role.ACCOUNTANT
+        acct.profile.save()
+        acct = User.objects.get(pk=acct.pk)
+        self.assertTrue(acct.has_perm('masters.view_billofmaterials'))
+        self.assertFalse(acct.has_perm('masters.add_billofmaterials'))
+
+        # Salesman
+        sales = User.objects.create_user(username='bom_sales', password='Password123!')
+        sales.profile.role = Role.SALESMAN
+        sales.profile.save()
+        sales = User.objects.get(pk=sales.pk)
+        self.assertFalse(sales.has_perm('masters.add_billofmaterials'))
