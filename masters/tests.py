@@ -275,3 +275,63 @@ class MasterModelsAndBenchmarkSeedTests(TestCase):
         sales.profile.save()
         sales = User.objects.get(pk=sales.pk)
         self.assertFalse(sales.has_perm('masters.add_billofmaterials'))
+
+    # 7. Admin Display and Changelist View Tests
+    def test_bom_admin_per_packet_display_formatting(self):
+        """
+        Verify that BillOfMaterialsAdmin.per_packet_display formats properly
+        without raising ValueError: Unknown format code 'f' for object of type 'SafeString'.
+        """
+        from django.contrib.admin.sites import AdminSite
+        from masters.admin import BillOfMaterialsAdmin, BillOfMaterialsInline
+
+        bom = BillOfMaterials.objects.create(
+            product=self.product,
+            raw_material=self.flour,
+            quantity=Decimal('40.0000'),
+            unit=UnitChoices.KG,
+            batch_size=Decimal('200.00')
+        )
+
+        site = AdminSite()
+        bom_admin = BillOfMaterialsAdmin(BillOfMaterials, site)
+        result = bom_admin.per_packet_display(bom)
+
+        self.assertIn("0.2000", str(result))
+        self.assertIn("kg / pkt", str(result))
+        self.assertIn("<strong>", str(result))
+
+        # Test inline display method as well
+        bom_inline = BillOfMaterialsInline(Product, site)
+        inline_result = bom_inline.quantity_per_packet_display(bom)
+        self.assertIn("0.2000", str(inline_result))
+
+    def test_admin_bom_changelist_view_renders_successfully(self):
+        """
+        Verify that the Django Admin BOM changelist page (/admin/masters/billofmaterials/)
+        loads cleanly with HTTP 200 and renders the per_packet_display column without error.
+        """
+        from django.urls import reverse
+
+        BillOfMaterials.objects.create(
+            product=self.product,
+            raw_material=self.flour,
+            quantity=Decimal('40.0000'),
+            unit=UnitChoices.KG,
+            batch_size=Decimal('200.00')
+        )
+
+        admin_user = User.objects.create_superuser(
+            username='admin_test_bom',
+            password='Password123!',
+            email='admin_test_bom@factoryflow.com'
+        )
+        self.client.force_login(admin_user)
+
+        url = reverse('admin:masters_billofmaterials_changelist')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "0.2000")
+        self.assertContains(response, "kg / pkt")
+

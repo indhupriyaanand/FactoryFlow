@@ -2,6 +2,39 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import Product, RawMaterial, Customer, Supplier, BillOfMaterials
 
+
+def format_bom_per_packet(obj):
+    """
+    Safely formats the BOM per-packet quantity to 4 decimal places.
+    Avoids passing numeric format specifiers like '{:.4f}' into format_html()
+    because format_html() escapes arguments into SafeString, which causes
+    'ValueError: Unknown format code f for object of type SafeString'.
+    """
+    if not obj:
+        return '-'
+    
+    qty = getattr(obj, 'quantity_per_packet', None)
+    if qty is None and hasattr(obj, 'quantity') and hasattr(obj, 'batch_size') and obj.batch_size:
+        try:
+            qty = obj.quantity / obj.batch_size
+        except Exception:
+            qty = None
+
+    if qty is None:
+        formatted_qty = "0.0000"
+    else:
+        try:
+            formatted_qty = f"{qty:.4f}"
+        except (ValueError, TypeError):
+            try:
+                formatted_qty = f"{float(qty):.4f}"
+            except (ValueError, TypeError):
+                formatted_qty = str(qty)
+
+    unit = getattr(obj, 'unit', '')
+    return format_html('<strong>{}</strong> {} / pkt', formatted_qty, unit)
+
+
 class BillOfMaterialsInline(admin.TabularInline):
     model = BillOfMaterials
     extra = 0
@@ -10,8 +43,8 @@ class BillOfMaterialsInline(admin.TabularInline):
     show_change_link = True
 
     def quantity_per_packet_display(self, obj):
-        if obj.pk:
-            return format_html('<strong>{:.4f}</strong> {} / pkt', obj.quantity_per_packet, obj.unit)
+        if obj and obj.pk:
+            return format_bom_per_packet(obj)
         return '-'
     quantity_per_packet_display.short_description = "Per Packet Qty"
 
@@ -145,7 +178,7 @@ class BillOfMaterialsAdmin(admin.ModelAdmin):
     batch_size_display.short_description = "Batch Size"
 
     def per_packet_display(self, obj):
-        return format_html('<strong>{:.4f}</strong> {} / pkt', obj.quantity_per_packet, obj.unit)
+        return format_bom_per_packet(obj)
     per_packet_display.short_description = "Per Packet"
 
     def status_badge(self, obj):
