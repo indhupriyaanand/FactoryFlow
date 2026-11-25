@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FactoryFlow - Smart Order-to-Audit ERP{% endblock %}</title>
@@ -13,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom ERP Stylesheet -->
-    <link rel="stylesheet" href="/static/css/factoryflow.css">
+    <link rel="stylesheet" href="{% static 'css/factoryflow.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-light">
@@ -54,46 +55,61 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-people me-2"></i>Users & Roles <span class="badge bg-secondary ms-1">Phase 2</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'accounts:user_list' %}">
+                                <i class="bi bi-people me-2"></i>Users & Roles
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-box-seam me-2"></i>Masters & BOM <span class="badge bg-secondary ms-1">Phase 3</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'masters:summary' %}">
+                                <i class="bi bi-box-seam me-2"></i>Masters & BOM
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-cart-check me-2"></i>Purchases & Ledger <span class="badge bg-secondary ms-1">Phase 4</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'purchases:list' %}">
+                                <i class="bi bi-cart-check me-2"></i>Purchases & Ledger
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-cpu me-2"></i>Production Runs <span class="badge bg-secondary ms-1">Phase 5</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'production:list' %}">
+                                <i class="bi bi-cpu me-2"></i>Production Runs
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-phone me-2"></i>Sales Orders <span class="badge bg-secondary ms-1">Phase 6</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'sales:order_list' %}">
+                                <i class="bi bi-phone me-2"></i>Sales Orders
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-receipt-cutoff me-2"></i>GST Invoices & Dispatch <span class="badge bg-secondary ms-1">Phase 7</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'inventory:summary' %}">
+                                <i class="bi bi-receipt-cutoff me-2"></i>Inventory
                             </a>
                         </li>
+                        {% if user.is_authenticated and user.profile.role == 'ADMIN' or user.is_authenticated and user.profile.role == 'OWNER' or user.is_authenticated and user.profile.role == 'ACCOUNTANT' or user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-cash-stack me-2"></i>Costing & Reports <span class="badge bg-secondary ms-1">Phase 8</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'product_profitability_report' %}">
+                                <i class="bi bi-cash-stack me-2"></i>Costing & Reports
                             </a>
                         </li>
+                        {% endif %}
+                        {% if user.is_authenticated and user.profile.role == 'ADMIN' or user.is_authenticated and user.profile.role == 'OWNER' or user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-secondary px-3 py-2 disabled" href="#">
-                                <i class="bi bi-pie-chart me-2"></i>Owner Dashboard <span class="badge bg-secondary ms-1">Phase 9</span>
+                            <a class="nav-link text-secondary px-3 py-2" href="{% url 'home' %}#owner-summary">
+                                <i class="bi bi-pie-chart me-2"></i>Owner Dashboard
                             </a>
                         </li>
+                        {% endif %}
                     </ul>
+
+                    <div class="px-3 pt-3">
+                        {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'accounts:logout' %}">
+                            {% csrf_token %}
+                            <button class="btn btn-outline-secondary btn-sm w-100" type="submit">Sign out</button>
+                        </form>
+                        {% else %}
+                        <a class="btn btn-primary btn-sm w-100" href="{% url 'accounts:login' %}">Sign in</a>
+                        {% endif %}
+                    </div>
 
                     <div class="px-3 pt-4 pb-2 border-top mt-4">
                         <small class="text-uppercase fw-semibold text-muted" style="font-size: 0.75rem;">Benchmark Case</small>

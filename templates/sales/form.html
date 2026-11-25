@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}New sales order - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New sales order</h1>
+<form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ order_form.non_field_errors }}{{ order_form.as_p }}
+    <h2 class="h6 mt-3">Order items</h2>
+    {{ item_formset.management_form }}
+    {{ item_formset.non_form_errors }}
+    <div id="sales-order-items">
+        {% for form in item_formset %}
+        <div class="sales-order-item border rounded p-3 mb-3">
+            {{ form.non_field_errors }}{{ form.as_p }}
+        </div>
+        {% endfor %}
+    </div>
+    <template id="sales-order-item-empty">
+        <div class="sales-order-item border rounded p-3 mb-3">
+            {{ item_formset.empty_form.as_p }}
+        </div>
+    </template>
+    <button type="button" class="btn btn-outline-secondary mb-3" id="add-sales-order-item">Add product</button>
+    <button class="btn btn-primary w-100 w-md-auto">Save draft</button>
+</form>
+<script>
+    document.getElementById('add-sales-order-item').addEventListener('click', function () {
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        const index = Number(totalForms.value);
+        const template = document.getElementById('sales-order-item-empty').innerHTML;
+        document.getElementById('sales-order-items').insertAdjacentHTML(
+            'beforeend',
+            template.replace(/__prefix__/g, index)
+        );
+        totalForms.value = index + 1;
+    });
+</script>
+{% endblock %}

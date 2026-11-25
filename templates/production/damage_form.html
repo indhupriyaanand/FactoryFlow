@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ title }}</h1>
+<form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    <button class="btn btn-primary w-100 w-md-auto">Save</button>
+</form>
+{% endblock %}

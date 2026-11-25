@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - FactoryFlow{% endblock %}
+{% block content %}<h1 class="h3 mb-3">{{ title }}</h1><form method="post" class="card card-body">{% csrf_token %}{{ form.as_p }}<div class="d-flex gap-2"><button class="btn btn-primary">Save</button><a class="btn btn-outline-secondary" href="{% if form.instance.pk %}{% url 'accounts:user_detail' form.instance.user_id %}{% else %}{% url 'accounts:user_list' %}{% endif %}">Cancel</a></div></form>{% endblock %}

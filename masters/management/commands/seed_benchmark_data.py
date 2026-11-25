@@ -21,7 +21,7 @@ class Command(BaseCommand):
         )
         p_status = "Created" if p_created else "Updated"
         self.stdout.write(self.style.SUCCESS(
-            f" [Product] {p_status}: {product.name} ({product.code}) - ₹{product.unit_price} (GST {product.gst_rate}%)"
+            f" [Product] {p_status}: {product.name} ({product.code}) - Rs {product.unit_price} (GST {product.gst_rate}%)"
         ))
 
         # 2. Raw Material Masters
@@ -37,6 +37,7 @@ class Command(BaseCommand):
                 'name': "Cooking Oil",
                 'unit': UnitChoices.LITRE,
                 'standard_rate': Decimal('140.00'),
+                'is_oil': True,
             },
             {
                 'code': "RM-SPICE",
@@ -49,6 +50,7 @@ class Command(BaseCommand):
                 'name': "Pouches",
                 'unit': UnitChoices.PIECES,
                 'standard_rate': Decimal('2.50'),
+                'is_pouch': True,
             },
             {
                 'code': "RM-CARTON",
@@ -66,13 +68,15 @@ class Command(BaseCommand):
                     'name': rm['name'],
                     'unit': rm['unit'],
                     'standard_rate': rm['standard_rate'],
+                    'is_oil': rm.get('is_oil', False),
+                    'is_pouch': rm.get('is_pouch', False),
                     'is_active': True,
                 }
             )
             rm_lookup[rm['code']] = mat
             m_status = "Created" if m_created else "Updated"
             self.stdout.write(self.style.SUCCESS(
-                f" [Material] {m_status}: {mat.name} ({mat.code}) - ₹{mat.standard_rate} / {mat.unit}"
+                f" [Material] {m_status}: {mat.name} ({mat.code}) - Rs {mat.standard_rate} / {mat.unit}"
             ))
 
         # 3. Customer Masters

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Damage and scrap - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0">Damage and scrap</h1>
+    <div>
+        <a class="btn btn-outline-warning" href="{% url 'production:damage_create' 'DAMAGED_POUCH' %}">Damaged pouch</a>
+        <a class="btn btn-primary" href="{% url 'production:damage_create' 'SCRAP' %}">Record scrap</a>
+    </div>
+</div>
+<div class="table-responsive">
+<table class="table table-striped">
+    <thead><tr><th>Date</th><th>Production</th><th>Type</th><th>Material/product</th><th>Quantity</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for record in records %}
+    <tr>
+        <td>{{ record.recorded_at }}</td>
+        <td>{{ record.production_order.order_number }}</td>
+        <td>{{ record.get_damage_type_display }}</td>
+        <td>{% if record.raw_material %}{{ record.raw_material.name }}{% else %}{{ record.product.name }}{% endif %}</td>
+        <td>{{ record.quantity }} {{ record.unit }}</td>
+        <td>{{ record.reason|default:"-" }}</td>
+        <td>{% if record.is_voided %}Voided{% else %}Active{% endif %}</td>
+        <td>
+            {% if not record.is_voided %}
+            <a href="{% url 'production:damage_edit' record.pk %}">Edit</a>
+            <form method="post" action="{% url 'production:damage_void' record.pk %}" class="d-inline">
+                {% csrf_token %}<button class="btn btn-link btn-sm text-danger">Void</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% empty %}<tr><td colspan="8">No damage or scrap records.</td></tr>{% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

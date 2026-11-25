@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}FactoryFlow - Smart Order-to-Audit ERP (Phase 3 Live){% endblock %}
+{% block title %}FactoryFlow - Smart Order-to-Audit ERP{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-2 pb-3 mb-4 border-bottom">
@@ -11,8 +11,8 @@
         <p class="text-muted mb-0">{{ subtitle }} &bull; <span class="fw-semibold text-primary">{{ organisation }}</span></p>
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 d-flex gap-2">
-        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
-            <i class="bi bi-check-circle-fill me-1"></i> Phase 3 Master Data Seeded & Verified
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 fs-6">
+            <i class="bi bi-info-circle-fill me-1"></i> Implementation status is checked against configured workflows
         </span>
         <a href="/admin/" class="btn btn-primary btn-sm px-3 py-2">
             <i class="bi bi-shield-lock-fill me-1"></i> Open Django Admin
@@ -21,13 +21,56 @@
 </div>
 
 <!-- Master Metrics Cards -->
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4" id="owner-summary">
     <div class="col-12 col-sm-6 col-xl-2">
         <div class="card border-0 shadow-sm rounded-3 h-100">
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Active Users</span>
                 <h3 class="fw-bold mb-0 text-primary mt-2">{{ user_count }}</h3>
                 <small class="text-muted">5 Roles Ready</small>
+            </div>
+            <form class="row g-2 mb-4" method="get">
+                <div class="col-md-4"><label class="form-label small">From</label><input class="form-control" type="date" name="from" value="{{ from_date }}"></div>
+                <div class="col-md-4"><label class="form-label small">To</label><input class="form-control" type="date" name="to" value="{{ to_date }}"></div>
+                <div class="col-md-4 align-self-end"><button class="btn btn-outline-primary">Apply period</button></div>
+            </form>
+            {% if low_stock_materials %}
+            <div class="alert alert-warning"><strong>Low-stock actions:</strong>
+                {% for row in low_stock_materials %}{{ row.raw_material.name }} ({{ row.balance }} {{ row.unit }}){% if not forloop.last %}, {% endif %}{% endfor %}
+            </div>
+            {% endif %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h2 class="h6">Dispatched product contribution (FIFO)</h2>
+                    <canvas id="profitability-chart" height="90"></canvas>
+                    <small class="text-muted">Products with legacy or incomplete source allocations are omitted from the contribution bars.</small>
+                </div>
+            </div>
+            {{ profitability_rows|json_script:"profitability-data" }}
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+            <script>
+            const profitability = JSON.parse(document.getElementById('profitability-data').textContent);
+            new Chart(document.getElementById('profitability-chart'), {
+                type: 'bar',
+                data: {
+                    labels: profitability.map(row => row.name),
+                    datasets: [{
+                        label: 'Contribution after dispatch FIFO COGS',
+                        data: profitability.map(row => row.profit),
+                        backgroundColor: '#198754'
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+            </script>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-2">
+        <div class="card border-0 shadow-sm rounded-3 h-100">
+            <div class="card-body">
+                <span class="text-muted small text-uppercase fw-semibold">Pending Purchases</span>
+                <h3 class="fw-bold mb-0 text-warning mt-2">{{ pending_purchase_count }}</h3>
+                <small class="text-muted">{{ received_purchase_count }} received</small>
             </div>
         </div>
     </div>
@@ -36,7 +79,7 @@
             <div class="card-body">
                 <span class="text-muted small text-uppercase fw-semibold">Products</span>
                 <h3 class="fw-bold mb-0 text-success mt-2">{{ product_count }}</h3>
-                <small class="text-muted">Murukku 200g (₹50)</small>
+                <small class="text-muted">Benchmark finished products</small>
             </div>
         </div>
     </div>
@@ -78,6 +121,89 @@
     </div>
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><small class="text-muted">Dispatched revenue (ex GST)</small><h4>₹{{ total_sales_revenue }}</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><small class="text-muted">Manufacturing Cost</small><h4>₹{{ total_manufacturing_cost }}</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><small class="text-muted">Dispatched revenue less FIFO COGS</small>{% if dispatch_cost_complete %}<h4>₹{{ gross_margin }}</h4><small class="text-muted">Dispatch COGS: ₹{{ total_dispatch_cogs }}</small>{% else %}<h4>Unavailable</h4><small class="text-muted">Legacy or missing source costs prevent a complete COGS total.</small>{% endif %}</div></div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><small class="text-muted">Low-stock Alerts</small><h4>{{ low_stock_materials|length }}</h4></div></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Collections</small><h5>₹{{ total_collections }}</h5></div></div></div>
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Outstanding</small><h5>₹{{ total_outstanding }}</h5><a class="small" href="{% url 'sales:collection_history' %}">{{ outstanding_invoice_count }} open invoices</a></div></div></div>
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Completed production</small><h5>{{ total_production_batches }}</h5><a class="small" href="{% url 'production:list' %}">Review batches</a></div></div></div>
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Dispatches</small><h5>{{ total_dispatches }}</h5><a class="small" href="{% url 'sales:order_list' %}">Review sales orders</a></div></div></div>
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Inventory value</small><h5>₹{{ inventory_value }}</h5><a class="small" href="{% url 'inventory:summary' %}">Stock summary</a></div></div></div>
+    <div class="col-sm-6 col-xl-2"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Damage / scrap</small><h5>{{ damage_record_count }}</h5><a class="small" href="{% url 'production:damage_list' %}">Review records</a></div></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6">Monthly sales, collections and production cost</h2>
+                <canvas id="business-trend-chart" height="100"></canvas>
+                <small class="text-muted">Production cost tracks completed output; dispatch profitability uses allocated finished-goods FIFO costs.</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h2 class="h6">Actionable alerts</h2>
+                {% if pending_approval_orders %}
+                <p class="mb-1">Sales orders awaiting approval:</p>
+                <ul class="small">{% for order in pending_approval_orders|slice:":5" %}<li><a href="{% url 'sales:detail' order.pk %}">{{ order.order_number }} — {{ order.customer.name }}</a></li>{% endfor %}</ul>
+                {% else %}<p class="small text-muted">No pending sales approvals.</p>{% endif %}
+                {% if outstanding_invoice_rows %}
+                <p class="mb-1">Outstanding invoices:</p>
+                <ul class="small">{% for invoice in outstanding_invoice_rows %}<li><a href="{% url 'sales:detail' invoice.sales_order_id %}">{{ invoice.invoice_number }} — ₹{{ invoice.outstanding_amount }}</a></li>{% endfor %}</ul>
+                {% endif %}
+                {% if low_stock_materials %}
+                <p class="mb-1">Low-stock materials (threshold {{ low_stock_threshold }}):</p>
+                <ul class="small">{% for row in low_stock_materials|slice:":5" %}<li><a href="{% url 'purchases:create' %}">{{ row.raw_material.name }} — {{ row.balance }} {{ row.unit }}</a></li>{% endfor %}</ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{{ trend_data|json_script:"business-trend-data" }}
+<script>
+const businessTrend = JSON.parse(document.getElementById('business-trend-data').textContent);
+new Chart(document.getElementById('business-trend-chart'), {
+    type: 'line',
+    data: {
+        labels: businessTrend.months,
+        datasets: [
+            {label: 'Sales', data: businessTrend.sales, borderColor: '#0d6efd', tension: 0.25},
+            {label: 'Collections', data: businessTrend.collections, borderColor: '#198754', tension: 0.25},
+            {label: 'Production cost', data: businessTrend.production, borderColor: '#fd7e14', tension: 0.25}
+        ]
+    },
+    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+});
+</script>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h2 class="h6">Audit and costing exports</h2>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'sales_orders_csv' %}">Sales lines</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'dispatch_register_csv' %}">Dispatches</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'sales_invoice_register_csv' %}">Invoices</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'payment_register_csv' %}">Payments / reversals</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'outstanding_invoices_csv' %}">Outstanding</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'inventory_ledger_audit_csv' %}">Ledger / FIFO allocations</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'sales_approval_audit_csv' %}">Sales approvals</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'production_approval_history_csv' %}">Production approvals</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'production_damage_csv' %}">Damage / scrap</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'production_material_variance_csv' %}">Material cost variance</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'product_profitability_report' %}">Product profitability report</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'product_profitability_csv' %}">Product profitability CSV</a>
+        </div>
+    </div>
+</div>
+
 <!-- Phase 3 Benchmark Master Data: Murukku 200g BOM Recipe Card -->
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
@@ -88,7 +214,7 @@
             <small class="text-muted">Standard Batch Formulation for <strong>200 Packets</strong> &bull; Selling Price: ₹{{ murukku_product.unit_price }} &bull; GST Rate: {{ murukku_product.gst_rate }}%</small>
         </div>
         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
-            <i class="bi bi-check2-all me-1"></i> Formulation Locked
+            <i class="bi bi-check2-all me-1"></i> Benchmark Formulation
         </span>
     </div>
     <div class="card-body p-0">
@@ -131,7 +257,7 @@
     </div>
     <div class="card-footer bg-light py-2 text-muted small d-flex justify-content-between align-items-center">
         <span><i class="bi bi-info-circle-fill text-primary me-1"></i> Per-packet requirement is computed dynamically: <code>Planned Qty / Batch Size (200)</code>.</span>
-        <span class="text-success fw-semibold"><i class="bi bi-shield-check me-1"></i>Zero Balance Overwrites: Stock ledger begins in Phase 4</span>
+        <span class="text-success fw-semibold"><i class="bi bi-shield-check me-1"></i>Append-only stock ledger with WAC valuation</span>
     </div>
 </div>
 
@@ -169,9 +295,9 @@
                                 <td><code>{{ cust.gstin|default:"Unregistered" }}</code></td>
                                 <td>
                                     {% if cust.state == 'Tamil Nadu' %}
-                                    <span class="badge bg-primary-subtle text-primary">CGST 2.5% + SGST 2.5%</span>
+                                    <span class="badge bg-primary-subtle text-primary">Intra-state GST</span>
                                     {% else %}
-                                    <span class="badge bg-warning-subtle text-warning text-dark">IGST 5.0%</span>
+                                    <span class="badge bg-warning-subtle text-warning text-dark">Inter-state GST</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -224,11 +350,11 @@
     </div>
 </div>
 
-<!-- Implementation Roadmap -->
+<!-- Implementation Status -->
 <div class="card border-0 shadow-sm rounded-3">
     <div class="card-header bg-white border-bottom py-3">
         <h5 class="card-title mb-0 fw-bold text-dark">
-            <i class="bi bi-signpost-split text-primary me-2"></i>FactoryFlow 10-Phase Build Plan
+            <i class="bi bi-signpost-split text-primary me-2"></i>FactoryFlow Implementation Status
         </h5>
     </div>
     <div class="card-body p-0">
@@ -236,73 +362,32 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 10%;">Phase</th>
-                        <th style="width: 25%;">Module Name</th>
-                        <th style="width: 45%;">Key Deliverables</th>
-                        <th style="width: 20%;">Status</th>
+                        <th>Phase</th>
+                        <th>Module</th>
+                        <th>Key deliverables</th>
+                        <th>Status and evidence</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="table-success">
-                        <td class="fw-bold">Phase 1</td>
-                        <td>Project Setup & Django</td>
-                        <td>Virtualenv, Django 5.1, Settings, Templates, Static, SQLite/PostgreSQL setup</td>
-                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed</span></td>
+                    {% for phase in phases %}
+                    <tr class="{% if phase.status == 'Complete' %}table-success{% else %}table-warning{% endif %}">
+                        <td class="fw-bold">Phase {{ phase.number }}</td>
+                        <td><a href="{{ phase.url }}">{{ phase.title }}</a></td>
+                        <td>{{ phase.deliverables }}</td>
+                        <td>
+                            <span class="badge {% if phase.status == 'Complete' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ phase.status }}</span>
+                            <small class="d-block text-muted mt-1">{{ phase.completed_checks }} / {{ phase.total_checks }} implementation checks present</small>
+                            {% if phase.missing %}
+                            <details class="small mt-1">
+                                <summary>Why partial</summary>
+                                <ul class="mb-0 mt-1">
+                                    {% for missing in phase.missing %}<li>{{ missing }}</li>{% endfor %}
+                                </ul>
+                            </details>
+                            {% endif %}
+                        </td>
                     </tr>
-                    <tr class="table-success">
-                        <td class="fw-bold">Phase 2</td>
-                        <td>Auth & Master Models</td>
-                        <td>UserProfile, 5 Roles (Admin, Sales, Prod, Auditor, Owner), Product, Material, Customer, Supplier, BOM</td>
-                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed</span></td>
-                    </tr>
-                    <tr class="table-success">
-                        <td class="fw-bold">Phase 3</td>
-                        <td>Master Data & Seed Data</td>
-                        <td>Murukku 200g, 5 Raw Materials, Retailer A, Distributor B, Supplier, BOM Recipe, Idempotent Seeder</td>
-                        <td><span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Completed & Tested</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 4</td>
-                        <td>Purchases & Stock Ledger</td>
-                        <td>Purchase Orders, Goods Receipt (GRN), Append-only Stock Ledger, Weighted Average Costing</td>
-                        <td><span class="badge bg-warning text-dark">Next Phase</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 5</td>
-                        <td>Production Runs & Variances</td>
-                        <td>Production logging, Actual vs BOM variance (-6% yield, +5% oil), Damaged pouch tracking</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 6</td>
-                        <td>Sales Orders & Approvals</td>
-                        <td>Mobile-friendly Salesman order entry, Stock availability checker, Admin order approvals</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 7</td>
-                        <td>GST Invoices, Dispatch & Payments</td>
-                        <td>Intra-state (CGST+SGST) & Inter-state (IGST), ReportLab PDF invoices, Payment receipts, Collections</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 8</td>
-                        <td>Product Costing & Audit Reports</td>
-                        <td>Batch costing (Material + Labour + Power), Excel & CSV export (openpyxl), Audit registers</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 9</td>
-                        <td>Owner Dashboard & Polish</td>
-                        <td>Executive summary cards, Real-time stock alerts, Profitability charts, UI polish</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
-                    <tr>
-                        <td class="fw-bold">Phase 10</td>
-                        <td>Benchmark Verification & Deploy</td>
-                        <td>Seed data script, Automated unit tests, Benchmark validation, Docker & DESIGN_NOTE.md</td>
-                        <td><span class="badge bg-light text-muted border">Upcoming</span></td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>

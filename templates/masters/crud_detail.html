@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ model_name }} details - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">{{ model_name }} details</h1>
+  <div class="d-flex gap-2">
+    {% if can_manage %}
+    <a class="btn btn-outline-primary" href="{% url 'masters:update' resource=resource pk=object.pk %}">Edit</a>
+    <a class="btn btn-outline-danger" href="{% url 'masters:delete' resource=resource pk=object.pk %}">Delete</a>
+    {% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'masters:list' resource=resource %}">Back to list</a>
+  </div>
+</div>
+<div class="card">
+  <dl class="card-body row mb-0">
+    {% for label, value in fields %}
+    <dt class="col-sm-4">{{ label|capfirst }}</dt>
+    <dd class="col-sm-8">{{ value|default:"—" }}</dd>
+    {% endfor %}
+  </dl>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ model_name }} - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">{{ model_name }}</h1>
+  {% if can_manage %}
+  <a class="btn btn-primary" href="{% url 'masters:create' resource=resource %}">Add</a>
+  {% endif %}
+</div>
+<form class="input-group mb-3" method="get">
+  <input class="form-control" name="q" value="{{ query }}" placeholder="Search">
+  <button class="btn btn-outline-secondary">Search</button>
+</form>
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead><tr><th>Record</th><th class="text-end">Actions</th></tr></thead>
+    <tbody>
+      {% for object in object_list %}
+      <tr>
+        <td><a href="{% url 'masters:detail' resource=resource pk=object.pk %}">{{ object }}</a></td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'masters:detail' resource=resource pk=object.pk %}">View</a>
+          {% if can_manage %}
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'masters:update' resource=resource pk=object.pk %}">Edit</a>
+          <a class="btn btn-sm btn-outline-danger" href="{% url 'masters:delete' resource=resource pk=object.pk %}">Delete</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="2">No records found.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

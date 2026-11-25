@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Deactivate {{ managed_user.username }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Confirm user deactivation</h1>
+<p>Deactivate <strong>{{ managed_user.username }}</strong>? The user record and its transaction history will be retained.</p>
+<form method="post" class="d-flex gap-2">
+  {% csrf_token %}
+  <button class="btn btn-danger" type="submit">Confirm deactivation</button>
+  <a class="btn btn-outline-secondary" href="{% url 'accounts:user_detail' managed_user.pk %}">Cancel</a>
+</form>
+{% endblock %}

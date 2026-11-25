@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Purchases - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3"><h1 class="h3">Purchases & GRNs</h1>{% if can_manage %}<a class="btn btn-primary" href="{% url 'purchases:create' %}">New purchase</a>{% endif %}</div>
+<div class="table-responsive"><table class="table table-striped">
+<thead><tr><th>Invoice</th><th>Supplier</th><th>Date</th><th>Status</th><th>Total</th><th>Actions</th></tr></thead>
+<tbody>{% for purchase in purchases %}<tr><td><a href="{% url 'purchases:detail' purchase.pk %}">{{ purchase.invoice_number }}</a></td><td>{{ purchase.supplier.name }}</td><td>{{ purchase.purchase_date }}</td><td>{{ purchase.get_status_display }}</td><td>₹{{ purchase.total_amount }}</td><td>{% if can_manage %}{% if purchase.status == 'DRAFT' %}<a class="btn btn-sm btn-outline-primary" href="{% url 'purchases:update' purchase.pk %}">Edit</a><form method="post" action="{% url 'purchases:receive' purchase.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success">Receive GRN</button></form><a class="btn btn-sm btn-outline-danger" href="{% url 'purchases:cancel' purchase.pk %}">Cancel</a>{% elif purchase.status == 'RECEIVED' %}<a class="btn btn-sm btn-outline-danger" href="{% url 'purchases:cancel' purchase.pk %}">Cancel</a>{% endif %}{% endif %}</td></tr>{% empty %}<tr><td colspan="6">No purchase invoices.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

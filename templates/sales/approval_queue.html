@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Sales approval queue - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Sales approval queue</h1>
+    <a class="btn btn-outline-secondary" href="{% url 'sales:order_list' %}">All sales orders</a>
+</div>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Created by</th><th>Total</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for order in orders %}
+            <tr>
+                <td><a href="{% url 'sales:detail' order.pk %}">{{ order.order_number }}</a></td>
+                <td>{{ order.customer.name }}</td>
+                <td>{{ order.order_date }}</td>
+                <td>{{ order.created_by|default:"—" }}</td>
+                <td>₹{{ order.grand_total }}</td>
+                <td>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'sales:detail' order.pk %}">Review</a>
+                    <form class="d-inline" method="post" action="{% url 'sales:approve_order' order.pk %}">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-success">Approve</button>
+                    </form>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">There are no sales orders awaiting approval.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

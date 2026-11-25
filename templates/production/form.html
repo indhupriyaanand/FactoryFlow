@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ title }}</h1>
+<form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {{ form.as_p }}
+    {% if usage_formset %}
+    <h2 class="h5 mt-3">Actual material consumption</h2>
+    {{ usage_formset.management_form }}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead><tr><th>Material</th><th>Unit</th><th>Planned</th><th>Actual</th></tr></thead>
+            <tbody>
+            {% for usage_form in usage_formset %}
+                <tr>
+                    <td>{{ usage_form.instance.raw_material.name }}{{ usage_form.id }}</td>
+                    <td>{{ usage_form.instance.unit }}</td>
+                    <td>{{ usage_form.instance.planned_quantity }}</td>
+                    <td>{{ usage_form.actual_quantity.errors }}{{ usage_form.actual_quantity }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    <button class="btn btn-primary w-100 w-md-auto">Save</button>
+</form>
+{% endblock %}

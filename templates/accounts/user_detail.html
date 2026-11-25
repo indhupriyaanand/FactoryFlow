@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ managed_user.username }} - Users & Roles{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div><h1 class="h3 mb-1">{{ managed_user.username }}</h1><p class="text-muted mb-0">{{ managed_user.email|default:"No email" }}</p></div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-primary" href="{% url 'accounts:user_update' managed_user.pk %}">Edit</a>
+    {% if managed_user.profile.is_active %}<a class="btn btn-outline-danger" href="{% url 'accounts:user_deactivate' managed_user.pk %}">Deactivate</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'accounts:user_list' %}">Back to users</a>
+  </div>
+</div>
+<dl class="card card-body row">
+  <dt class="col-sm-3">Role</dt><dd class="col-sm-9">{{ managed_user.profile.get_role_display }}</dd>
+  <dt class="col-sm-3">Phone</dt><dd class="col-sm-9">{{ managed_user.profile.phone_number|default:"—" }}</dd>
+  <dt class="col-sm-3">Active</dt><dd class="col-sm-9">{{ managed_user.profile.is_active|yesno:"Yes,No" }}</dd>
+  <dt class="col-sm-3">Joined</dt><dd class="col-sm-9">{{ managed_user.date_joined }}</dd>
+</dl>
+{% endblock %}

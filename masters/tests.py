@@ -1,6 +1,7 @@
 import io
 from decimal import Decimal
 from django.test import TestCase
+from django.urls import reverse
 from django.core.management import call_command
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
@@ -334,4 +335,162 @@ class MasterModelsAndBenchmarkSeedTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "0.2000")
         self.assertContains(response, "kg / pkt")
+
+
+class MasterCrudRequestTests(TestCase):
+    models_by_resource = {
+        "products": Product,
+        "raw-materials": RawMaterial,
+        "customers": Customer,
+        "suppliers": Supplier,
+    }
+
+    def setUp(self):
+        setup_role_groups()
+        self.admin = User.objects.create_user(
+            username="masters-admin",
+            password="Password123!",
+        )
+        self.admin.profile.role = Role.ADMIN
+        self.admin.profile.save()
+        self.client.force_login(self.admin)
+
+    def payload(self, resource, suffix):
+        active = {"is_active": "on"}
+        if resource == "products":
+            return {
+                **active,
+                "name": f"Test Product {suffix}",
+                "code": f"TEST-PRODUCT-{suffix}",
+                "packet_size": "250 g",
+                "gst_rate": "5.00",
+                "unit_price": "75.00",
+            }
+        if resource == "raw-materials":
+            return {
+                **active,
+                "name": f"Test Material {suffix}",
+                "code": f"TEST-MATERIAL-{suffix}",
+                "unit": UnitChoices.KG,
+                "standard_rate": "42.00",
+                "weighted_average_rate": "40.0000",
+            }
+        common = {
+            **active,
+            "name": f"Test {resource.title()} {suffix}",
+            "contact_number": "9876543210",
+            "address": "1 Factory Road",
+            "state": "Tamil Nadu",
+            "state_code": "33",
+            "gstin": "",
+        }
+        return common
+
+    def test_summary_cards_link_to_each_management_list(self):
+        response = self.client.get(reverse("masters:summary"))
+        self.assertEqual(response.status_code, 200)
+        for resource in self.models_by_resource:
+            with self.subTest(resource=resource):
+                self.assertContains(
+                    response,
+                    reverse("masters:list", kwargs={"resource": resource}),
+                )
+
+    def test_each_master_supports_list_add_details_edit_and_confirmed_delete(self):
+        for index, (resource, model) in enumerate(self.models_by_resource.items()):
+            suffix = str(index)
+            payload = self.payload(resource, suffix)
+            with self.subTest(resource=resource):
+                list_url = reverse("masters:list", kwargs={"resource": resource})
+                create_url = reverse("masters:create", kwargs={"resource": resource})
+                self.assertEqual(self.client.get(list_url).status_code, 200)
+                self.assertEqual(self.client.get(create_url).status_code, 200)
+
+                response = self.client.post(create_url, payload)
+                self.assertRedirects(response, list_url)
+                obj = model.objects.get(code=payload["code"]) if resource in {
+                    "products", "raw-materials"
+                } else model.objects.get(name=payload["name"])
+
+                detail_url = reverse(
+                    "masters:detail",
+                    kwargs={"resource": resource, "pk": obj.pk},
+                )
+                edit_url = reverse(
+                    "masters:update",
+                    kwargs={"resource": resource, "pk": obj.pk},
+                )
+                delete_url = reverse(
+                    "masters:delete",
+                    kwargs={"resource": resource, "pk": obj.pk},
+                )
+
+                response = self.client.get(list_url)
+                self.assertContains(response, detail_url)
+                self.assertContains(response, edit_url)
+                self.assertContains(response, delete_url)
+                self.assertEqual(self.client.get(detail_url).status_code, 200)
+                self.assertContains(self.client.get(edit_url), "Save")
+
+                edited_payload = self.payload(resource, suffix)
+                edited_payload["name"] += " Edited"
+                response = self.client.post(edit_url, edited_payload)
+                self.assertRedirects(response, list_url)
+                obj.refresh_from_db()
+                self.assertTrue(obj.name.endswith(" Edited"))
+                self.assertContains(self.client.get(detail_url), "Edited")
+
+                response = self.client.get(delete_url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "Confirm deactivation")
+                response = self.client.post(delete_url)
+                self.assertRedirects(response, list_url)
+                obj.refresh_from_db()
+                self.assertFalse(obj.is_active)
+                self.assertFalse(model.objects.filter(pk=obj.pk, is_active=True).exists())
+
+    def test_read_only_role_can_view_but_cannot_manage_masters(self):
+        product = Product.objects.create(
+            name="Read-only Product",
+            code="READONLY-PRODUCT",
+        )
+        accountant = User.objects.create_user(
+            username="masters-accountant",
+            password="Password123!",
+        )
+        accountant.profile.role = Role.ACCOUNTANT
+        accountant.profile.save()
+        self.client.force_login(accountant)
+
+        list_url = reverse("masters:list", kwargs={"resource": "products"})
+        detail_url = reverse(
+            "masters:detail",
+            kwargs={"resource": "products", "pk": product.pk},
+        )
+        self.assertEqual(self.client.get(list_url).status_code, 200)
+        self.assertEqual(self.client.get(detail_url).status_code, 200)
+        self.assertNotContains(self.client.get(list_url), "Add</a>")
+        self.assertNotContains(self.client.get(detail_url), ">Edit</a>")
+        self.assertEqual(
+            self.client.get(reverse("masters:create", kwargs={"resource": "products"})).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.get(
+                reverse("masters:update", kwargs={"resource": "products", "pk": product.pk})
+            ).status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("masters:delete", kwargs={"resource": "products", "pk": product.pk})
+            ).status_code,
+            403,
+        )
+
+    def test_unknown_master_resource_returns_404(self):
+        self.assertEqual(
+            self.client.get(reverse("masters:list", kwargs={"resource": "unknown"})).status_code,
+            404,
+        )
 

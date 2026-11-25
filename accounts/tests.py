@@ -1,4 +1,6 @@
 from django.test import TestCase
+from django.test import Client
+from django.urls import reverse
 from django.contrib.auth.models import User, Group, Permission
 from accounts.models import UserProfile, Role
 from accounts.roles import setup_role_groups, ROLE_GROUP_MAPPING
@@ -108,3 +110,131 @@ class UserRoleManagementTests(TestCase):
         self.assertTrue(accountant.has_perm('masters.view_customer'))
         self.assertFalse(accountant.has_perm('masters.add_product'))
         self.assertFalse(accountant.has_perm('masters.delete_customer'))
+
+    def test_admin_user_management_workflow(self):
+        admin = User.objects.create_user(username='workflow-admin', password='Password123!')
+        admin.profile.role = Role.ADMIN
+        admin.profile.save()
+        client = Client()
+        client.force_login(admin)
+        response = client.post(reverse('accounts:user_create'), {
+            'username': 'new-user',
+            'email': 'new@example.com',
+            'password': 'ComplexPassword123!',
+            'role': Role.ACCOUNTANT,
+            'phone_number': '9999999999',
+        })
+        self.assertEqual(response.status_code, 302)
+        created = User.objects.get(username='new-user')
+        self.assertEqual(created.profile.role, Role.ACCOUNTANT)
+        response = client.get(reverse('accounts:user_list'))
+        self.assertEqual(response.status_code, 200)
+
+
+class UserCrudRequestTests(TestCase):
+    def setUp(self):
+        setup_role_groups()
+        self.admin = User.objects.create_user(
+            username='crud-admin',
+            password='Password123!',
+        )
+        self.admin.profile.role = Role.ADMIN
+        self.admin.profile.save()
+        self.client = Client()
+        self.client.force_login(self.admin)
+
+    def test_create_view_edit_and_confirm_deactivate_user(self):
+        response = self.client.post(reverse('accounts:user_create'), {
+            'username': 'managed-user',
+            'email': 'managed@example.test',
+            'password': 'StrongPass123!',
+            'role': Role.SALESMAN,
+            'phone_number': '9876543210',
+        })
+        list_url = reverse('accounts:user_list')
+        self.assertRedirects(response, list_url)
+        managed = User.objects.get(username='managed-user')
+
+        detail_url = reverse('accounts:user_detail', args=[managed.pk])
+        self.assertEqual(self.client.get(detail_url).status_code, 200)
+        edit_url = reverse('accounts:user_update', args=[managed.pk])
+        response = self.client.post(edit_url, {
+            'role': Role.ACCOUNTANT,
+            'phone_number': '9123456780',
+            'is_active': 'on',
+        })
+        self.assertRedirects(response, detail_url)
+        managed.refresh_from_db()
+        self.assertEqual(managed.profile.role, Role.ACCOUNTANT)
+        self.assertEqual(managed.profile.phone_number, '9123456780')
+
+        deactivate_url = reverse('accounts:user_deactivate', args=[managed.pk])
+        self.assertEqual(self.client.get(deactivate_url).status_code, 200)
+        self.assertContains(self.client.get(deactivate_url), 'Confirm user deactivation')
+        response = self.client.post(deactivate_url)
+        self.assertRedirects(response, list_url)
+        managed.refresh_from_db()
+        self.assertFalse(managed.is_active)
+        self.assertFalse(managed.profile.is_active)
+        self.assertTrue(User.objects.filter(pk=managed.pk).exists())
+
+    def test_admin_cannot_deactivate_self_or_last_admin(self):
+        self_user_deactivate = reverse(
+            'accounts:user_deactivate',
+            args=[self.admin.pk],
+        )
+        response = self.client.post(self_user_deactivate)
+        self.assertRedirects(
+            response,
+            reverse('accounts:user_detail', args=[self.admin.pk]),
+        )
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+
+        other_admin = User.objects.create_user(
+            username='other-admin',
+            password='Password123!',
+        )
+        other_admin.profile.role = Role.ADMIN
+        other_admin.profile.save()
+        self.admin.profile.role = Role.SALESMAN
+        self.admin.profile.save()
+        self.admin.is_superuser = True
+        self.admin.save(update_fields=['is_superuser'])
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse('accounts:user_deactivate', args=[other_admin.pk])
+        )
+        self.assertRedirects(
+            response,
+            reverse('accounts:user_detail', args=[other_admin.pk]),
+        )
+        other_admin.refresh_from_db()
+        self.assertTrue(other_admin.is_active)
+
+    def test_admin_cannot_remove_the_last_active_admin_role(self):
+        response = self.client.post(
+            reverse('accounts:user_update', args=[self.admin.pk]),
+            {
+                'role': Role.SALESMAN,
+                'phone_number': '',
+                'is_active': 'on',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'last active admin account')
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.profile.role, Role.ADMIN)
+
+    def test_non_admin_cannot_access_user_management_routes(self):
+        viewer = User.objects.create_user(
+            username='crud-viewer',
+            password='Password123!',
+        )
+        viewer.profile.role = Role.SALESMAN
+        viewer.profile.save()
+        self.client.force_login(viewer)
+        self.assertEqual(
+            self.client.get(reverse('accounts:user_list')).status_code,
+            403,
+        )

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Cancel production {{ order.order_number }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Confirm production cancellation</h1>
+<p>Cancel production order <strong>{{ order.order_number }}</strong>?{% if order.status == "COMPLETED" %} Completed stock movements will be reversed only if the finished output remains on hand.{% endif %}</p>
+<form method="post" class="card card-body">
+  {% csrf_token %}
+  <label class="form-label" for="cancel-reason">Reason (optional)</label>
+  <textarea class="form-control mb-3" id="cancel-reason" name="reason" rows="3"></textarea>
+  <div class="d-flex gap-2"><button class="btn btn-danger" type="submit">Confirm cancellation</button><a class="btn btn-outline-secondary" href="{% url 'production:detail' order.pk %}">Keep production order</a></div>
+</form>
+{% endblock %}

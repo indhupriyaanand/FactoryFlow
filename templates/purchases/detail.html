@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Purchase {{ purchase.invoice_number }} - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div><h1 class="h3 mb-1">Purchase {{ purchase.invoice_number }}</h1><p class="text-muted mb-0">{{ purchase.supplier }} · {{ purchase.purchase_date }} · {{ purchase.get_status_display }}</p></div>
+  <div class="d-flex gap-2">
+    {% if can_manage and purchase.status == "DRAFT" %}
+    <a class="btn btn-outline-primary" href="{% url 'purchases:update' purchase.pk %}">Edit draft</a>
+    <form method="post" action="{% url 'purchases:receive' purchase.pk %}">{% csrf_token %}<button class="btn btn-success">Receive GRN</button></form>
+    {% endif %}
+    {% if can_manage and purchase.status != "CANCELLED" %}<a class="btn btn-outline-danger" href="{% url 'purchases:cancel' purchase.pk %}">Cancel purchase</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'purchases:list' %}">Back to purchases</a>
+  </div>
+</div>
+{% if purchase.notes %}<p>{{ purchase.notes }}</p>{% endif %}
+<div class="table-responsive"><table class="table table-striped">
+  <thead><tr><th>Raw material</th><th>Quantity</th><th>Unit</th><th>Unit rate</th><th>Line total</th></tr></thead>
+  <tbody>{% for item in purchase.items.all %}
+    <tr><td>{{ item.raw_material }}</td><td>{{ item.quantity }}</td><td>{{ item.get_unit_display }}</td><td>₹{{ item.unit_price }}</td><td>₹{{ item.total_price }}</td></tr>
+  {% empty %}<tr><td colspan="5">No purchase items.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><th colspan="4" class="text-end">Total</th><th>₹{{ purchase.total_amount }}</th></tr></tfoot>
+</table></div>
+{% endblock %}

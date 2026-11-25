@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Sales - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap gap-2 mb-3"><h1 class="h3">Sales orders</h1><div>{% if can_manage_approvals %}<a class="btn btn-outline-primary" href="{% url 'sales:approval_queue' %}">Approval queue{% if pending_approval_count %} ({{ pending_approval_count }}){% endif %}</a> {% endif %}<a class="btn btn-primary" href="{% url 'sales:create_order' %}">New order</a> <a class="btn btn-outline-secondary" href="{% url 'sales:collection_history' %}">Collections</a> <a class="btn btn-outline-warning" href="{% url 'sales:shortage_list' %}">Shortages</a></div></div>
+<form class="row g-2 mb-3" method="get">
+    <div class="col-md-3"><input class="form-control" name="q" value="{{ query }}" placeholder="Search order or customer"></div>
+    <div class="col-md-2"><select class="form-select" name="status"><option value="">All statuses</option><option value="DRAFT">Draft</option><option value="CONFIRMED">Confirmed</option><option value="PARTIALLY_DISPATCHED">Partial dispatch</option><option value="DISPATCHED">Dispatched</option><option value="CANCELLED">Cancelled</option></select></div>
+    <div class="col-md-2"><select class="form-select" name="customer"><option value="">All customers</option>{% for customer in customers %}<option value="{{ customer.pk }}" {% if customer_id == customer.pk|stringformat:"s" %}selected{% endif %}>{{ customer.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><input class="form-control" type="date" name="from" value="{{ from_date }}"></div><div class="col-md-2"><input class="form-control" type="date" name="to" value="{{ to_date }}"></div>
+    <div class="col-md-1"><button class="btn btn-outline-secondary w-100">Filter</button></div>
+</form>
+<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Status</th><th>Approval</th><th>Total</th><th>Actions</th></tr></thead>
+<tbody>{% for order in orders %}<tr><td><a href="{% url 'sales:detail' order.pk %}">{{ order.order_number }}</a></td><td>{{ order.customer.name }}</td><td>{{ order.order_date }}</td><td>{{ order.get_status_display }}</td><td>{{ order.get_approval_status_display }}</td><td>₹{{ order.grand_total }}</td><td>{% if can_edit_sales and order.status == 'DRAFT' and order.approval_status != 'APPROVED' %}<a href="{% url 'sales:edit_order' order.pk %}">Edit</a>{% endif %} {% if order.approval_status == 'APPROVED' and order.status == 'CONFIRMED' or order.approval_status == 'APPROVED' and order.status == 'PARTIALLY_DISPATCHED' %}<a href="{% url 'sales:dispatch' order.pk %}">Dispatch</a>{% endif %} {% if order.invoice %}<a href="{% url 'sales:invoice_pdf' order.invoice.pk %}">Invoice</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="7">No sales orders.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

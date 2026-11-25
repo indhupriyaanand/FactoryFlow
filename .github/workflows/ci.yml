@@ -1,0 +1,39 @@
+name: FactoryFlow CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test
+      - run: docker build --tag factoryflow:ci .
+      - name: Smoke test container health
+        run: |
+          docker run --detach --rm --name factoryflow-ci-smoke \
+            --publish 8000:8000 \
+            --env DEBUG=False \
+            --env SECRET_KEY=ci-only-smoke-key \
+            --env ALLOWED_HOSTS=127.0.0.1,localhost \
+            --env DATABASE_PATH=/tmp/factoryflow-ci.sqlite3 \
+            factoryflow:ci
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:8000/health/; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs factoryflow-ci-smoke
+          exit 1
+      - name: Clean up smoke container
+        if: always()
+        run: docker rm --force factoryflow-ci-smoke || true

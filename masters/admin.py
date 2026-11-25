@@ -80,7 +80,15 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(RawMaterial)
 class RawMaterialAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'unit_badge', 'standard_rate_display', 'bom_usage_count', 'status_badge')
+    list_display = (
+        'code',
+        'name',
+        'unit_badge',
+        'standard_rate_display',
+        'weighted_average_rate_display',
+        'bom_usage_count',
+        'status_badge',
+    )
     list_filter = ('unit', 'is_active')
     search_fields = ('name', 'code')
     ordering = ('name',)
@@ -93,6 +101,10 @@ class RawMaterialAdmin(admin.ModelAdmin):
     def standard_rate_display(self, obj):
         return f"₹{obj.standard_rate} / {obj.unit}"
     standard_rate_display.short_description = "Standard Rate"
+
+    def weighted_average_rate_display(self, obj):
+        return f"₹{obj.weighted_average_rate} / {obj.unit}"
+    weighted_average_rate_display.short_description = "WAC Rate"
 
     def bom_usage_count(self, obj):
         count = obj.bom_usages.count()

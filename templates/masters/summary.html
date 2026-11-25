@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Masters - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-4">Master data</h1>
+<div class="row g-3">
+  <div class="col-md-3">
+    <a class="card h-100 text-decoration-none text-reset" href="{% url 'masters:list' resource='products' %}">
+      <div class="card-body"><h2 class="h6">Products</h2><strong>{{ products|length }}</strong><span class="d-block small text-primary mt-2">Manage products</span></div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a class="card h-100 text-decoration-none text-reset" href="{% url 'masters:list' resource='raw-materials' %}">
+      <div class="card-body"><h2 class="h6">Raw materials</h2><strong>{{ raw_materials|length }}</strong><span class="d-block small text-primary mt-2">Manage raw materials</span></div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a class="card h-100 text-decoration-none text-reset" href="{% url 'masters:list' resource='customers' %}">
+      <div class="card-body"><h2 class="h6">Customers</h2><strong>{{ customers|length }}</strong><span class="d-block small text-primary mt-2">Manage customers</span></div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a class="card h-100 text-decoration-none text-reset" href="{% url 'masters:list' resource='suppliers' %}">
+      <div class="card-body"><h2 class="h6">Suppliers</h2><strong>{{ suppliers|length }}</strong><span class="d-block small text-primary mt-2">Manage suppliers</span></div>
+    </a>
+  </div>
+</div>
+{% endblock %}

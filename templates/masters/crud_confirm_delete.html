@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3">Confirm deletion</h1>
+<p>Deactivate {{ object }}? This record will be hidden from active lists but retained for historical records.</p>
+<form method="post" class="d-flex gap-2">
+  {% csrf_token %}
+  <button class="btn btn-danger" type="submit">Confirm deactivation</button>
+  <a class="btn btn-outline-secondary" href="{% url 'masters:detail' resource=resource pk=object.pk %}">Cancel</a>
+</form>
+{% endblock %}

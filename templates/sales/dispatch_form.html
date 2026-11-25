@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Dispatch {{ order.order_number }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Dispatch {{ order.order_number }}</h1>
+<form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ dispatch_form.non_field_errors }}{{ dispatch_form.as_p }}
+    {{ quantity_forms.management_form }}
+    <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Product</th><th>Ordered</th><th>Remaining</th><th>Dispatch now</th></tr></thead>
+    <tbody>{% for item,line,remaining in dispatch_lines %}
+        <tr><td>{{ item.product.name }}</td><td>{{ item.quantity }}</td><td>{{ remaining }}</td><td>{{ line.item_id }}{{ line.quantity }}</td></tr>
+    {% endfor %}</tbody></table></div>
+    <button class="btn btn-primary w-100 w-md-auto">Record dispatch</button>
+</form>
+{% endblock %}

@@ -1,0 +1,25 @@
+services:
+  web:
+    build: .
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    environment:
+      DEBUG: "False"
+      SECRET_KEY: "${SECRET_KEY:?Set SECRET_KEY in the shell or .env file}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      DATABASE_PATH: "/data/db.sqlite3"
+      MEDIA_ROOT: "/media"
+      LOW_STOCK_RAW_MATERIAL_THRESHOLD: "${LOW_STOCK_RAW_MATERIAL_THRESHOLD:-50.0000}"
+    volumes:
+      - factoryflow-data:/data
+      - factoryflow-media:/media
+
+volumes:
+  factoryflow-data:
+  factoryflow-media:

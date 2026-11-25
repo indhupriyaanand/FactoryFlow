@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">{{ title }}</h1>
+<form method="post" class="card card-body">
+  {% csrf_token %}
+  <h2 class="h6">Invoice</h2>{{ invoice_form.as_p }}
+  <h2 class="h6 mt-3">Received items</h2>
+  {{ item_formset.management_form }}
+  {% if item_formset.non_form_errors %}<div class="alert alert-danger">{{ item_formset.non_form_errors }}</div>{% endif %}
+  <div class="table-responsive">
+    <table class="table table-sm" id="purchase-items-table">
+      <thead><tr>{% for field in item_formset.empty_form.visible_fields %}{% if field.name != 'DELETE' %}<th>{{ field.label }}</th>{% endif %}{% endfor %}<th>Remove</th></tr></thead>
+      <tbody>
+        {% for item_form in item_formset %}
+        <tr>
+          {% for field in item_form.visible_fields %}
+          {% if field.name != 'DELETE' %}<td>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</td>{% endif %}
+          {% endfor %}
+          <td>{% if item_formset.can_delete %}{{ item_form.DELETE }}{% endif %}</td>
+          {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+        </tr>
+        {% endfor %}
+        <template id="purchase-item-empty">
+          <tr>
+            {% for field in item_formset.empty_form.visible_fields %}
+            {% if field.name != 'DELETE' %}<td>{{ field }}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</td>{% endif %}
+            {% endfor %}
+            <td>{{ item_formset.empty_form.DELETE }}</td>
+            {% for hidden in item_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+  <button class="btn btn-outline-secondary mb-3" type="button" id="add-purchase-item">Add raw material</button>
+  <p class="form-text">Received invoices are locked; stock changes only when the draft is received.</p>
+  <div class="d-flex gap-2"><button class="btn btn-primary">Save draft</button><a class="btn btn-outline-secondary" href="{% url 'purchases:list' %}">Cancel</a></div>
+</form>
+<script>
+  document.getElementById('add-purchase-item').addEventListener('click', function () {
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+    const index = Number(totalForms.value);
+    const row = document.getElementById('purchase-item-empty').innerHTML
+      .replace(/__prefix__/g, index);
+    document.querySelector('#purchase-items-table tbody').insertAdjacentHTML('beforeend', row);
+    totalForms.value = index + 1;
+  });
+</script>
+{% endblock %}

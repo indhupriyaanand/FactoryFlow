@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Product Profitability - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Product Profitability</h1>
+        <p class="text-muted mb-0">Dispatched sales revenue excluding GST compared with FIFO finished-goods costs.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" href="{% url 'product_profitability_csv' %}{% if csv_query %}?{{ csv_query }}{% endif %}">Download CSV</a>
+        <a class="btn btn-outline-secondary" href="{% url 'inventory_valuation_csv' %}">Inventory valuation CSV</a>
+    </div>
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-4">
+        <label class="form-label" for="profit-product">Product</label>
+        <select class="form-select" id="profit-product" name="product">
+            <option value="">All active products</option>
+            {% for product in products %}
+                <option value="{{ product.pk }}" {% if selected_product == product.pk|stringformat:"s" %}selected{% endif %}>{{ product.name }} ({{ product.code }})</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label" for="profit-from">Dispatch from</label>
+        <input class="form-control" id="profit-from" type="date" name="from" value="{{ from_date }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label" for="profit-to">Dispatch to</label>
+        <input class="form-control" id="profit-to" type="date" name="to" value="{{ to_date }}">
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+        <button class="btn btn-primary flex-grow-1">Filter</button>
+        <a class="btn btn-outline-secondary" href="{% url 'product_profitability_report' %}">Clear</a>
+    </div>
+</form>
+
+<div class="alert alert-info py-2">
+    COGS and profitability are marked unavailable where historical FIFO source costs or allocations are missing; no cost is estimated.
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th class="text-end">Dispatched quantity</th>
+                <th class="text-end">Net sales (ex GST)</th>
+                <th class="text-end">FIFO COGS</th>
+                <th class="text-end">Gross profit</th>
+                <th class="text-end">Gross margin</th>
+                <th>Cost source</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row.product_name }} <small class="text-muted">({{ row.product_code }})</small></td>
+                <td class="text-end">{{ row.dispatched_quantity }}</td>
+                <td class="text-end">₹{{ row.net_sales_revenue }}</td>
+                <td class="text-end">{% if not row.cost_available %}<span class="text-danger">Unavailable</span>{% else %}₹{{ row.fifo_cogs }}{% endif %}</td>
+                <td class="text-end">{% if not row.cost_available %}<span class="text-danger">Unavailable</span>{% else %}₹{{ row.gross_profit }}{% endif %}</td>
+                <td class="text-end">{% if not row.margin_available %}—{% else %}{{ row.gross_margin }}%{% endif %}</td>
+                <td>{{ row.cost_source_status }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="text-center text-muted">No products match these filters.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

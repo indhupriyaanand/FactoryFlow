@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Cancel purchase {{ purchase.invoice_number }} - FactoryFlow{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Confirm purchase cancellation</h1>
+<p>Cancel invoice <strong>{{ purchase.invoice_number }}</strong>?{% if purchase.status == "RECEIVED" %} This will reverse its receipt only if none of its stock has been consumed.{% else %} This draft has not changed inventory.{% endif %}</p>
+<form method="post" class="card card-body">
+  {% csrf_token %}
+  <label class="form-label" for="cancel-reason">Reason (optional)</label>
+  <textarea class="form-control mb-3" id="cancel-reason" name="reason" rows="3"></textarea>
+  <div class="d-flex gap-2"><button class="btn btn-danger" type="submit">Confirm cancellation</button><a class="btn btn-outline-secondary" href="{% url 'purchases:detail' purchase.pk %}">Keep purchase</a></div>
+</form>
+{% endblock %}

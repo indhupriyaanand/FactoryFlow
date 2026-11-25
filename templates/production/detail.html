@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Production {{ order.order_number }} - FactoryFlow{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div><h1 class="h3 mb-1">Production {{ order.order_number }}</h1><p class="text-muted mb-0">{{ order.product }} · {{ order.get_status_display }} · {{ order.get_approval_status_display }}</p></div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if can_manage and order.status != "COMPLETED" and order.status != "CANCELLED" %}
+    <a class="btn btn-outline-primary" href="{% url 'production:edit' order.pk %}">Edit</a>
+    {% if order.approval_status == "PENDING" %}<form method="post" action="{% url 'production:approve' order.pk %}">{% csrf_token %}<button class="btn btn-success">Approve</button></form>{% endif %}
+    {% if order.approval_status == "APPROVED" %}<a class="btn btn-primary" href="{% url 'production:complete' order.pk %}">Complete</a>{% endif %}
+    <a class="btn btn-outline-danger" href="{% url 'production:cancel' order.pk %}">Cancel</a>
+    {% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'production:list' %}">Back to production</a>
+  </div>
+</div>
+<dl class="card card-body row">
+  <dt class="col-sm-3">Target output</dt><dd class="col-sm-9">{{ order.target_quantity }}</dd>
+  <dt class="col-sm-3">Actual output</dt><dd class="col-sm-9">{{ order.produced_quantity }}</dd>
+  <dt class="col-sm-3">Yield variance</dt><dd class="col-sm-9">{{ order.yield_variance_quantity }} ({{ order.yield_variance_percent }}%)</dd>
+  <dt class="col-sm-3">Material cost</dt><dd class="col-sm-9">₹{{ order.material_cost }}</dd>
+  <dt class="col-sm-3">Labour / power</dt><dd class="col-sm-9">₹{{ order.labour_cost }} / ₹{{ order.power_cost }}</dd>
+  <dt class="col-sm-3">Total / unit cost</dt><dd class="col-sm-9">₹{{ order.total_cost }} / ₹{{ order.unit_cost }}</dd>
+</dl>
+<h2 class="h5 mt-4">Material usage</h2>
+<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Material</th><th>Planned Qty</th><th>Planned Unit Cost</th><th>Planned Cost</th><th>Actual Used (incl. damage)</th><th>Variance</th><th>Unit</th></tr></thead><tbody>
+{% for usage in order.material_usages.all %}<tr><td>{{ usage.raw_material }}</td><td>{{ usage.planned_quantity }}</td><td>{% if usage.planned_unit_rate is not None %}₹{{ usage.planned_unit_rate }}{% else %}Legacy baseline unavailable{% endif %}</td><td>{% if usage.planned_cost is not None %}₹{{ usage.planned_cost }}{% else %}—{% endif %}</td><td>{{ usage.actual_consumed_quantity }}</td><td>{{ usage.variance_quantity }}</td><td>{{ usage.unit }}</td></tr>{% empty %}<tr><td colspan="7">No material usage records.</td></tr>{% endfor %}
+</tbody></table></div>
+<h2 class="h5 mt-4">Damage and scrap</h2>
+<div class="table-responsive"><table class="table table-striped"><thead><tr><th>Type</th><th>Item</th><th>Quantity</th><th>Reason</th><th>Status</th></tr></thead><tbody>
+{% for record in order.damage_records.all %}<tr><td>{{ record.get_damage_type_display }}</td><td>{% if record.raw_material %}{{ record.raw_material }}{% else %}{{ record.product }}{% endif %}</td><td>{{ record.quantity }} {{ record.unit }}</td><td>{{ record.reason|default:"—" }}</td><td>{% if record.is_voided %}Voided{% else %}Active{% endif %}</td></tr>{% empty %}<tr><td colspan="5">No damage or scrap records.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

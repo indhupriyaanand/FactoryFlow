@@ -107,6 +107,21 @@ class RawMaterial(TimeStampedModel):
         validators=[MinValueValidator(Decimal('0.00'))],
         help_text="Standard opening procurement rate per unit in ₹."
     )
+    weighted_average_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+        validators=[MinValueValidator(Decimal('0.0000'))],
+        help_text="Current weighted average inventory cost per standard unit in ₹."
+    )
+    is_oil = models.BooleanField(
+        default=False,
+        help_text="Identifies cooking oil for production variance reporting."
+    )
+    is_pouch = models.BooleanField(
+        default=False,
+        help_text="Identifies pouch packaging for damage tracking."
+    )
     is_active = models.BooleanField(
         default=True,
         help_text="Active status for purchasing and BOM inclusion."
@@ -175,10 +190,19 @@ class Customer(TimeStampedModel):
 
     def clean(self):
         super().clean()
+        self.state = self.state.strip()
+        if not self.state:
+            raise ValidationError({'state': "Customer state is required for GST calculation."})
+        if self.state_code and (
+            len(self.state_code.strip()) != 2 or not self.state_code.strip().isdigit()
+        ):
+            raise ValidationError({'state_code': "State code must be a two-digit number."})
         if self.gstin:
             cleaned_gst = self.gstin.strip().upper()
-            if len(cleaned_gst) != 15:
-                raise ValidationError({'gstin': "GSTIN must be exactly 15 characters long if provided."})
+            if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', cleaned_gst):
+                raise ValidationError({'gstin': "GSTIN must match the standard 15-character format."})
+            if self.state_code and cleaned_gst[:2] != self.state_code.strip():
+                raise ValidationError({'gstin': "GSTIN state prefix must match the customer state code."})
             self.gstin = cleaned_gst
             if not self.state_code and cleaned_gst[:2].isdigit():
                 self.state_code = cleaned_gst[:2]
