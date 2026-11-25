@@ -238,3 +238,77 @@ class UserCrudRequestTests(TestCase):
             self.client.get(reverse('accounts:user_list')).status_code,
             403,
         )
+
+
+class BootstrapAdminCommandTests(TestCase):
+    """
+    Tests for the secure bootstrap_admin management command.
+    """
+
+    def test_bootstrap_skipped_if_env_vars_missing(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
+
+        out = StringIO()
+        with patch.dict('os.environ', {}, clear=True):
+            call_command('bootstrap_admin', stdout=out)
+        self.assertIn("ADMIN_USERNAME and/or ADMIN_PASSWORD environment variables are not set", out.getvalue())
+        self.assertEqual(User.objects.filter(is_superuser=True).count(), 0)
+
+    def test_bootstrap_creates_superuser_successfully(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
+
+        out = StringIO()
+        secret_password = "SuperSecretPassword987!"
+        env_vars = {
+            'ADMIN_USERNAME': 'deploy_admin',
+            'ADMIN_EMAIL': 'deploy_admin@factoryflow.com',
+            'ADMIN_PASSWORD': secret_password,
+        }
+        with patch.dict('os.environ', env_vars, clear=True):
+            call_command('bootstrap_admin', stdout=out)
+
+        self.assertIn("Superuser 'deploy_admin' successfully created with ADMIN role", out.getvalue())
+        # Verify password is never printed in output
+        self.assertNotIn(secret_password, out.getvalue())
+
+        user = User.objects.get(username='deploy_admin')
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_staff)
+        self.assertEqual(user.email, 'deploy_admin@factoryflow.com')
+        self.assertTrue(user.check_password(secret_password))
+        self.assertEqual(user.profile.role, Role.ADMIN)
+
+    def test_bootstrap_idempotent_and_does_not_overwrite_password(self):
+        from io import StringIO
+        from unittest.mock import patch
+        from django.core.management import call_command
+
+        # Create user with an existing password
+        initial_password = "OriginalPassword123!"
+        user = User.objects.create_superuser(
+            username='existing_admin',
+            email='existing@factoryflow.com',
+            password=initial_password
+        )
+
+        out = StringIO()
+        new_password = "AttemptedNewPassword456!"
+        env_vars = {
+            'ADMIN_USERNAME': 'existing_admin',
+            'ADMIN_EMAIL': 'existing@factoryflow.com',
+            'ADMIN_PASSWORD': new_password,
+        }
+        with patch.dict('os.environ', env_vars, clear=True):
+            call_command('bootstrap_admin', stdout=out)
+
+        self.assertIn("Superuser 'existing_admin' already exists. No changes made", out.getvalue())
+        self.assertNotIn(new_password, out.getvalue())
+
+        # Verify password was NOT changed
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(initial_password))
+        self.assertFalse(user.check_password(new_password))
